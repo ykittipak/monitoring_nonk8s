@@ -1,0 +1,100 @@
+# Create YAML for services
+# File create on August 2024
+# Owner Kittipak Yamsri; kittipak.y@gzyservice.com and kittipak.y@gmail.com
+# Reference https://docs.docker.com/, https://prometheus.io/
+#------------------------------------------------------------------------
+#version: '3.6'
+
+networks:
+  monitor-net:
+    driver: bridge
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+## Core stack(LGM) - Logs
+  loki:
+      image: grafana/loki:latest
+      container_name: loki
+      volumes:
+        - ./loki/config/loki.yaml:/etc/config/loki.yaml
+      entrypoint:
+        - /usr/bin/loki
+        - -config.file=/etc/config/loki.yaml
+      ports:
+        - "3100:3100"
+      networks:
+        - monitor-net 
+## Core stack(LGM) - Grafana dashboard
+  grafana:
+      # image: grafana/grafana:latest  >> If need to alway last version
+      image: grafana/grafana:9.1.7
+      container_name: grafana
+      restart: always
+      ports:
+        - 3000:3000
+      environment:
+        - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+        - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-P@ssw0rd}
+        - GF_USERS_ALLOW_SIGN_UP=false
+        #- GF_SERVER_PROTOCOL=https
+        #- GF_SERVER_CERT_FILE=/etc/grafana/ssl/fullchain.pem
+        #- GF_SERVER_CERT_KEY=/etc/grafana/ssl/privkey.pem
+      volumes: 
+        - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+        #- ./grafana/ssl:/etc/grafana/ssl
+        - grafana_data:/var/lib/grafana
+      networks:
+        - monitor-net 
+## Core stack(LGM) - Metrics
+  prometheus:
+    # image: prom/prometheus:latest  >> If need to alway last version
+    image: prom/prometheus:v2.39.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.config.file=/etc/prometheus/webprometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    #  - '--storage.tsdb.retention.time=200h'
+      - '--storage.tsdb.retention.time=14d'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+# Exporter data from host(target linux) #This use in case that server running under docker container, This section usefule for demo when you run all component (prometheus, grafana) only one machine.
+#
+#  nodeexporter:
+#    # image: prom/node-exporter:latest >> If need to alway last version
+#    image: prom/node-exporter:v1.4.0
+#    container_name: nodeexporter
+#    volumes:
+#      - ./prometheus:/etc/prometheus
+#      - /proc:/host/proc:ro
+#      - /sys:/host/sys:ro
+#      - /:/rootfs:ro
+#    command:
+#      - '--web.config=/etc/prometheus/webnodeexporter.yml'
+#      - '--path.procfs=/host/proc'
+#      - '--path.rootfs=/rootfs'
+#      - '--path.sysfs=/host/sys'
+#      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+#    ports:
+#      - 9100:9100
+#    restart: unless-stopped
+#    networks:
+#      - monitor-net
+#    labels:
+#      org.label-schema.group: "monitoring"
+#
+
