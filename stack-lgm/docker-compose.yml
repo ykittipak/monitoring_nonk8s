@@ -73,7 +73,7 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
-## Alert manager component
+## Alertmanager component
   alertmanager:
     # Run Container as root user
     user: root
@@ -104,7 +104,7 @@ services:
     networks:
       - monitor-net
 
-
+##Commment##
 # Exporter data from host(target linux) #This use in case that server running under docker container, This section usefule for demo when you run all component (prometheus, grafana) only one machine.
 #
 #  nodeexporter:
