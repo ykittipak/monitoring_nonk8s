@@ -4,7 +4,7 @@ Deploy Docker, Loki, Grafana and Prometheus follow step as below,
 clone repo
 
 copy folder stack-lgm to your directory
-cd dockpromgrafana
+cd stack-lgm
 
 Prometheus and Nodeexporter:
 User: admin
