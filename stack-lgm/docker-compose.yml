@@ -11,6 +11,7 @@ networks:
 volumes:
     prometheus_data: {}
     grafana_data: {}
+    alertmanager_data: {}
 
 services:
 ## Core stack(LGM) - Logs
@@ -53,7 +54,7 @@ services:
     image: prom/prometheus:v2.39.0
     container_name: prometheus
     volumes:
-      - ./prometheus:/etc/prometheus
+      - ./prometheus/config:/etc/prometheus
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -71,6 +72,38 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
+
+## Alert manager component
+  alertmanager:
+    # Run Container as root user
+    user: root
+    image: prom/alertmanager:v0.23.0
+    container_name: alertmanager
+    hostname: localhost
+    restart: always
+    ports:
+      - '9093:9093'
+   # Mount config file from local to Container  
+    volumes:
+      - './prometheus/config:/config'
+      - 'alertmanager_data:/alertmanager/data'
+   # Container start CMD to load config file   
+    command:
+      - '--config.file=/config/alertmanager.yml'
+    networks:
+      - monitor-net
+
+## Test loggenerator
+  log-generator-jmx-exporter:
+    restart: always
+    environment:
+      - 'JAVA_OPTS=-javaagent:/jmx_prometheus_javaagent-0.16.1.jar=9999:/config.yaml'
+    ports:
+      - '9999:9999'
+    image: 'lianduantraining/log-generator-jmx-exporter:v1'
+    networks:
+      - monitor-net
+
 
 # Exporter data from host(target linux) #This use in case that server running under docker container, This section usefule for demo when you run all component (prometheus, grafana) only one machine.
 #
